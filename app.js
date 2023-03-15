@@ -111,9 +111,9 @@ io.on("connection", (socket) => {
                         io.to(sessionId).emit("bot_message", "No order has been placed yet!");
                         io.to(sessionId).emit("bot_message", "Press 1 to place an order");
                     } else {
-                        for (let i = 0; i < orderHistory.length; i++) {
+                        for (let i = 0; i < order.length; i++) {
                         
-                            io.to(sessionId).emit("bot_message", orderHistory[i]);
+                            io.to(sessionId).emit("bot_message", order[i]);
                     }
                     }
                     break;
@@ -300,8 +300,8 @@ io.on("connection", (socket) => {
                                             break;
                                     }
                         
-                            default:
-                                io.to(sessionId).emit("bot_message", "Type in one of the numbers above to make your request!");
+                            // default:
+                            //     io.to(sessionId).emit("bot_message", "Type in one of the numbers above to make your request!");
                                 break;
                         }
                     }
