@@ -18,7 +18,6 @@ const sessionMiddleWare = session({
     resave: false,
     saveUninitialized: true,
     cookie: {secure: true},
-    store: new session.MemoryStore()
 })
 
 
