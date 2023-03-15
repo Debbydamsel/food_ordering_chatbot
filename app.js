@@ -6,9 +6,8 @@ const port = process.env.PORT || 3000;
 const path = require("path");
 
 const joinPath = path.join(__dirname, "bot.html");
-const landingPage = path.join(__dirname, "landingpage.html");
 const app = express();
-const http = require('http');
+const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
@@ -29,12 +28,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 const categories = ["Please type in a category you want to select a food item from:", "breakfast", "combo dishes", "thirst quenchers", "chops", "varieties"];
 
 
-
 app.get("/", (req, res) => {
-    res.sendFile(landingPage);
-})
-
-app.get('/chatbot', (req, res) => {
   res.sendFile(joinPath);
 });
 
@@ -45,8 +39,8 @@ io.use((socket, next) => {
 
 
 
-io.on('connection', (socket) => {
-  console.log('a user connected');
+io.on("connection", (socket) => {
+  
     //get the session id
     const sessionId = socket.request.session.id;
 
@@ -319,8 +313,8 @@ io.on('connection', (socket) => {
         } 
         })
 
-            socket.on('disconnect', () => {
-                console.log('user disconnected');
+            socket.on("disconnect", () => {
+                console.log("user disconnected");
             });
  });
 
