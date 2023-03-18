@@ -18,7 +18,7 @@ const sessionMiddleWare = session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        maxAge: process.env.COOKIE_MAX_AGE  //1 DAY
+        maxAge: 24 * 60 * 60 * 1000  //1 DAY
     }
     
 })
