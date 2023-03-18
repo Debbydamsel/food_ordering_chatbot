@@ -122,7 +122,7 @@ io.on("connection", (socket) => {
                         
 
                         for (let i = 0; i < previousOrders.length; i++) {
-                            io.to(sessionId).emit("bot_message",eachitems[i]);
+                            io.to(sessionId).emit("bot_message",previousOrders[i]);
                         }
                      }).catch((err) => {
                         console.log(err);
