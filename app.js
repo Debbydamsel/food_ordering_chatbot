@@ -1,35 +1,31 @@
 const express = require("express");
-const session = require("express-session");
+const dbConnect = require("./dbConnection/connectToDb");
+const OrderHistory = require("./model/orderHistoryModel");
+const uuid = require("uuid");
+
 const bodyParser = require("body-parser");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
 const path = require("path");
 
-const joinPath = path.join(__dirname, "bot.html");
-const app = express();
+const joinPath = path.join(__dirname, "public");
+
+ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
+const sessionMiddleWare = require("./config/session");
+const {category, displayMenus} = require("./controller/categories");
 
-//handle sessions
-const sessionMiddleWare = session({
-    secret: process.env.SECRET_KEY,
-    resave: false,
-    saveUninitialized: true,
-    cookie: {secure: true},
-})
+//connection to mongodb
+dbConnect();
 
 
+app.use(express.static(joinPath));
 app.use(sessionMiddleWare);
 app.use(bodyParser.urlencoded({extended: false}));
 
-const categories = ["Please type in a category you want to select a food item from:", "breakfast", "combo dishes", "thirst quenchers", "chops", "varieties"];
-
-
-app.get("/", (req, res) => {
-  res.sendFile(joinPath);
-});
 
 //socket.io middleware used to store and retrieve sessions
 io.use((socket, next) => {
@@ -37,11 +33,16 @@ io.use((socket, next) => {
 });
 
 
+const categories = ["Please type in a category you want to select a food item from:", "breakfast", "combos", "drinks", "chops", "varieties"];
+
+
 
 io.on("connection", (socket) => {
-  
+    console.log("user connected");
+    
     //get the session id
     const sessionId = socket.request.session.id;
+    
 
     //attach the user's socketid with the session object
     //this also stores the session id to the socket id
@@ -50,12 +51,25 @@ io.on("connection", (socket) => {
     //get the session which includes the socketid to connect the user to that session
     const sessionData = socket.request.session;
 
+
+     //if the user id does not already exists create a new one 
+     if (!socket.request.session.userId) {
+        //generate a unique userid
+        const userId = uuid.v4();
+        //join the userid to the session
+        socket.request.session.userId = userId;
+        socket.request.session.save();
+    }
+
+    //if the userid already exist just use that id for the socket connection
+    const userId = socket.request.session.userId;
+
     socket.join(sessionId);
 
     let order = sessionData.order;
-    let orderHistory = sessionData.orderHistory;
     order = [];
-    orderHistory = [];
+
+    sessionData.save();
 
     socket.emit("bot_message", "Welcome to scrumptious treat😍🍲🍖. Please enter your name below to get started!");
 
@@ -87,33 +101,44 @@ io.on("connection", (socket) => {
                         io.to(sessionId).emit("bot_message", "No order to place yet!");
                         io.to(sessionId).emit("bot_message", "Press 1 to place an order");
                     } else {
-                        for (let i = 0; i < order.length; i++) {
-                            orderHistory.push(order[i]);
-                            // io.to(sessionId).emit("bot_message", order[i]);
-                        }
-                        io.to(sessionId).emit("bot_message", "Order placed!");
+
+                        const ordersHistory = new OrderHistory({
+                            userId: userId,
+                            items: order
+                        })
+
+                        ordersHistory.save();
+                       
+                        io.to(sessionId).emit("bot_message", "Order placed!<br> Press 1 to place new orders");
+                        order.length = 0;
                         
                     }
                     break;
                 case "98":
-                    if (orderHistory.length === 0) {
-                        io.to(sessionId).emit("bot_message", "No order has been placed yet so you dont have any order history!");
-                        io.to(sessionId).emit("bot_message", "Press 1 to place an order");
-                    } else {
-                        for (let i = 0; i < orderHistory.length; i++) {
-                            io.to(sessionId).emit("bot_message", orderHistory[i]);
+
+                     OrderHistory.find({userId}, { _id: 0, items: 1 }).lean()
+                     .then((orders) => {
+                       const previousOrders = orders.map(order => Object.values(order).join(", "));
+                        
+
+                        for (let i = 0; i < previousOrders.length; i++) {
+                            io.to(sessionId).emit("bot_message",eachitems[i]);
                         }
-                    }
+                     }).catch((err) => {
+                        console.log(err);
+                     })
+                    
                     break;
                 case "97":
+
+                   
                     if (order.length === 0) {
                         io.to(sessionId).emit("bot_message", "No order has been placed yet!");
                         io.to(sessionId).emit("bot_message", "Press 1 to place an order");
                     } else {
                         for (let i = 0; i < order.length; i++) {
-                        
-                            io.to(sessionId).emit("bot_message", order[i]);
-                    }
+                            io.to(sessionId).emit("bot_message", `Here is your current order <br> ${order[i]}`);
+                        }
                     }
                     break;
                 case "0":
@@ -124,10 +149,7 @@ io.on("connection", (socket) => {
                 } else {
                     order.length = 0;
                     io.to(sessionId).emit("bot_message", "Order cancelled!");
-                }
-
-                    
-                        
+                }        
                     break;
             
                 default: 
@@ -136,62 +158,24 @@ io.on("connection", (socket) => {
                             case "breakfast":
                                 
                                 sessionData.selection = "breakfast"
-                                console.log(sessionData);
-                                let breakfastMenu = {
-                                    "1": "2. Akara and pap - #\800",
-                                    "2": "3. Boiled or fried yam - #\6700",
-                                    "3": "4. fried potato - #\6600"
-                                }
-                                Object.values(breakfastMenu).forEach(value => io.to(sessionId).emit("bot_message", value));
-                                io.to(sessionId).emit("bot_message", "Type 1 to go back to the food categories");
+                                displayMenus(category.breakfast, sessionId, io);
                                 break;
-                            case "combo dishes":
-                                sessionData.selection = "combo dishes"
-                                let comboMenu = {
-                                    "1": "2. Eba and egusi - #\800",
-                                    "2": "3. Yam and egg - #\6700",
-                                    "3": "4. Bread and ewa agoyin - #\78800"
-                                }
-                                Object.values(comboMenu).forEach(value => io.to(sessionId).emit("bot_message", value));
-                                console.log(sessionData);
-                                io.to(sessionId).emit("bot_message", "Type 1 to go back to the food categories");
+                            case "combos":
+                                sessionData.selection = "combos"
+                                displayMenus(category.combos, sessionId, io);
                                 
                                 break;
-                            case "thirst quenchers":
-                                sessionData.selection = "thirst quenchers"
-                                let quenchMenu = {
-                                    "1": "2. 5alive pulpy - #\800",
-                                    "2": "3. Chapman - #\6600",
-                                    "3": "4. Parfait - #\78800"
-                                }
-                                Object.values(quenchMenu).forEach(value => io.to(sessionId).emit("bot_message", value));
-                                io.to(sessionId).emit("bot_message", "Type 1 to go back to the food categories");
-                                
-                                
+                            case "drinks":
+                                sessionData.selection = "drinks"
+                                displayMenus(category.drinks, sessionId, io);
                                 break;
                             case "chops":
                                 sessionData.selection = "chops"
-                                let chopsMenu = {
-                                    "1": "2. Chicken pie - #\800",
-                                    "2": "3. Meat pie - #\6600",
-                                    "3": "4. Scotch egg - #\722200"
-                                }
-                                Object.values(chopsMenu).forEach(value => io.to(sessionId).emit("bot_message", value));
-                                io.to(sessionId).emit("bot_message", "Type 1 to go back to the food categories");
-                                
-                                
+                                displayMenus(category.chops, sessionId, io);
                                 break;
                             case "varieties":
                                 sessionData.selection = "varieties";
-                                let varietiesMenu = {
-                                    "1": "2. Asun - #\10000",
-                                    "2": "3.  pepper soup - #\703000",
-                                    "3": "4. Nkwobi - #\6600"
-                                }
-                                Object.values(varietiesMenu).forEach(value => io.to(sessionId).emit("bot_message", value));
-                                io.to(sessionId).emit("bot_message", "Type 1 to go back to the food categories");
-                                
-                                
+                                displayMenus(category.varieties, sessionId, io);
                                 break;
                         
                             default:
@@ -200,121 +184,34 @@ io.on("connection", (socket) => {
                         }
                     } else {
                         const selection = sessionData.selection;
-                        switch (selection) {
-                            case "breakfast":
-                                switch(msg) {
-                                    case "2":
-                                        order.push("Akara and pap - #\800");
-                                        io.to(sessionId).emit("bot_message", "Akara and pap - #\800 added to your order");
-                                        break;
-                                    case "3":
-                                        order.push("Boiled or fried yam - #\6700");
-                                        io.to(sessionId).emit("bot_message", "Boiled or fried yam - #\6700 added to your order");
-                                        break;
-                                    case "4":
-                                        order.push("fried potato - #\6600");
-                                        io.to(sessionId).emit("bot_message", "fried potato - #\6600 added to your order");
-                                        break;
-                                    default:
-                                        io.to(sessionId).emit("bot_message", "Enter the number attached to the food menu");
-                                        break;
-                                }
-                                break;
-                            case "combo dishes":
-                                switch(msg) {
-                                    case "2":
-                                        order.push("Eba and egusi - #\800");
-                                        io.to(sessionId).emit("bot_message", "Eba and egusi - #\800 added to your order");
-                                        break;
-                                    case "3":
-                                        order.push("Yam and egg - #\700");
-                                        io.to(sessionId).emit("bot_message", "Yam and egg - #\700 added to your order");
-                                        break;
-                                    case "4":
-                                        order.push("Bread and ewa agoyin - #\8800");
-                                        io.to(sessionId).emit("bot_message", "Bread and ewa agoyin - #\8800 added to your order");
-                                        break;
-                                    default:
-                                        io.to(sessionId).emit("bot_message", "Enter the number attached to the food menu");
-                                        break;
-                                }
-                                break;
-                            case "thirst quenchers":
-                                
-                                switch(msg) {
-                                    case "2":
-                                        order.push("5alive pulpy - #\800");
-                                        io.to(sessionId).emit("bot_message", "5alive pulpy - #\800 added!");
-                                            break;
-                                    case "3":
-                                        order.push("Chapman - #\6600");
-                                        io.to(sessionId).emit("bot_message", "Chapman - #\6600 added!");
-                                            break;
-                                    case "4":
-                                        order.push("Parfait - #\78800");
-                                        io.to(sessionId).emit("bot_message", "Parfait - #\78800 added");
-                                            break;
-                                        default:
-                                            io.to(sessionId).emit("bot_message", "Enter the number attached to the food menu");
-                                            break;
-                                    }
-                                break;
-                            case "chops":
-                                switch(msg) {
-                                    
-                                    case "2":
-                                        order.push("Chicken pie - #\800");
-                                        io.to(sessionId).emit("bot_message", "Chicken pie - #\800 added!");
-                                            break;
-                                    case "3":
-                                        order.push("Meat pie - #\6600");
-                                        io.to(sessionId).emit("bot_message", "Meat pie - #\6600 added!");
-                                            break;
-                                    case "4":
-                                        order.push("Scotch egg - #\722200");
-                                        io.to(sessionId).emit("bot_message", "Scotch egg - #\722200 added!");
-                                            break;
-                                        default:
-                                            io.to(sessionId).emit("bot_message", "Enter the number attached to the food menu");
-                                            break;
-                                    }
-                                break;
-                                case "varieties":
-                                    
-                                    switch(msg) {
-                                        case "2":
-                                            order.push("Asun - #\10000");
-                                            io.to(sessionId).emit("bot_message", "Asun - #\10000 added!");
-                                            break;
-                                        case "3":
-                                            order.push("pepper soup - #\703000");
-                                            io.to(sessionId).emit("bot_message", "pepper soup - #\703000 added!");
-                                            break;
-                                        case "4":
-                                            order.push("Nkwobi - #\6600");
-                                            io.to(sessionId).emit("bot_message", "Nkwobi - #\6600 added");
-                                            break;
-                                        default:
-                                            io.to(sessionId).emit("bot_message", "Enter the number attached to the food menu");
-                                            break;
-                                    }
+                        console.log(selection);
+                        const getCategory = category[selection];
+                        console.log(getCategory);
                         
-                            // default:
-                            //     io.to(sessionId).emit("bot_message", "Type in one of the numbers above to make your request!");
-                                break;
+                        if (getCategory[msg]) {
+                            const item = getCategory[msg];
+                            order.push(item);
+                            io.to(sessionId).emit("bot_message", `${item} added to your order`);
+                            
+                        } else {
+                            io.to(sessionId).emit("bot_message", "please select one of the items listed above");
+                            displayMenus(category, sessionId, io);
                         }
+                                
                     }
+                    
                 
                 
                     break;
            }
            
         } 
-        })
+    })
 
             socket.on("disconnect", () => {
-                console.log("user disconnected");
+                console.log("user disconnected"); 
             });
+
  });
 
 server.listen(port, () => {
