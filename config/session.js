@@ -3,7 +3,7 @@ const MongoDBStore = require("connect-mongodb-session")(session);
 require("dotenv").config();
 
 const store = new MongoDBStore({
-    uri: "mongodb://localhost:27017/test",
+    uri: process.env.MONGODB_CONNECTION_URL,
     collection: "session"
 })
 
