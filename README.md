@@ -6,6 +6,8 @@ This project was built to assist users in placing orders for their desired meals
 
 Websockets: This is used to create real time communication between the user and the client.
 
+node.js: This is javascript runtime environment.
+
 Express: This is a node.js framework.
 
 Express-session: This was used to manage sessions.
