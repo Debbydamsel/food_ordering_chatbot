@@ -22,7 +22,7 @@ function placeOrder(userId, order, sessionId, io) {
 function getOrders(userId, sessionId, io) {
     OrderHistory.find({userId}, { _id: 0, items: 1 }).lean()
     .then((orders) => {
-        if(orders) {
+        if(orders.length > 0) {
             const previousOrders = orders.map(order => Object.values(order).join(", "));
             loopHandler(previousOrders, sessionId, io);
         } else {
