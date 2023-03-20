@@ -1,4 +1,5 @@
 
+const categories = ["Please type in a category you want to select a food item from:", "breakfast", "combos", "drinks", "chops", "varieties"];
 
 let category = {
     breakfast: {
@@ -14,21 +15,21 @@ let category = {
     }, 
 
     drinks: {
-        "1": "2. 5alive pulpy - #\800",
-        "2": "3. Chapman - #\6600",
-        "3": "4. Parfait - #\78800"
+        2: "2. 5alive pulpy - #\800",
+        3: "3. Chapman - #\6600",
+        4: "4. Parfait - #\78800"
     },
 
     chops: {
-        "1": "2. Chicken pie - #\800",
-        "2": "3. Meat pie - #\6600",
-        "3": "4. Scotch egg - #\722200"
+        2: "2. Chicken pie - #\800",
+        3: "3. Meat pie - #\6600",
+        4: "4. Scotch egg - #\722200"
     },
 
     varieties: {
-        "1": "2. Asun - #\10000",
-        "2": "3.  pepper soup - #\703000",
-        "3": "4. Nkwobi - #\6600"
+        2: "2. Asun - #\100800",
+        3: "3.  pepper soup - #\703000",
+        4: "4. Nkwobi - #\6600"
     }
 }
 
@@ -37,4 +38,10 @@ function displayMenus(pickCategory, sessionId, io) {
     io.to(sessionId).emit("bot_message", "when you are done with ordering from this category, Type 1 to go back to the food categories if you would like to order more");
 }
 
-module.exports = {category, displayMenus};
+function loopHandler(arr, sessionId, io) {
+    for (let i = 0; i < arr.length; i++) {
+        io.to(sessionId).emit("bot_message", arr[i]);
+    }
+}
+
+module.exports = {categories, category, displayMenus, loopHandler};

@@ -3,7 +3,7 @@ const MongoDBStore = require("connect-mongodb-session")(session);
 require("dotenv").config();
 
 const store = new MongoDBStore({
-    uri: process.env.MONGODB_CONNECTION_URL,
+    uri: "mongodb://localhost:27017/test",
     collection: "session"
 })
 
@@ -18,7 +18,8 @@ const sessionMiddleWare = session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        maxAge: 24 * 60 * 60 * 1000  //1 DAY
+        maxAge: 24 * 60 * 60 * 1000,  //1 DAY
+        secure: true
     }
     
 })
