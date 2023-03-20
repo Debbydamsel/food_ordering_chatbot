@@ -151,7 +151,7 @@ io.on("connection", (socket) => {
                             const item = getCategory[msg];
                             order.push(item);
                             io.to(sessionId).emit("bot_message", `${item} has been added to your order!`);
-                            io.to(sessionId).emit("bot_message", "Press 99 to place your order");
+                            io.to(sessionId).emit("bot_message", "Press 99 to checkout your order");
                             
                         } else {
                             io.to(sessionId).emit("bot_message", "please type one of the numbers listed above");
